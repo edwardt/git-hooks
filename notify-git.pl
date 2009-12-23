@@ -34,47 +34,50 @@ binmode STDOUT, ':utf8';
 # some parameters you may want to change
 
 # base URL of the gitweb repository browser (can be set with the -u option)
-my $gitweb_url = "http://rentdev.rtkinternal:8085/~jhe/gitweb.cgi";
+my $gitweb_url = `git config notify.gitwebUrl` || 'http://rtkgit.rtkinternal/';
 
 # set this to something that takes "-s"
-my $mailer = "/bin/mail";
+my $mailer = '/bin/mail';
 
-my $sender = "pptweb_commits\@rentrak.com";
+my $sender = `git config notify.email.sender` || 'git@rtkgit.rtkinternal';
 
 # default repository name (can be changed with the -r option)
-my $repos_name = "";
+my $repos_name = `git config notify.name` || '';
 
 # max size of diffs in bytes (can be changed with the -s option)
-my $max_diff_size = 10000;
+my $max_diff_size = `git config notify.diffBytes` || 10000;
 
 # address for mail notices (can be set with -m option)
-my $commitlist_address;
+my $commitlist_address = `git config notify.email.address`;
 
 # project name for CIA notices (can be set with -c option)
-my $cia_project_name;
+my $cia_project_name = `git config notify.cia.name`;
 
 # CIA notification address
-my $cia_address = "cia\@cia.navi.cx";
+my $cia_address = `git config notify.cia.address` || 'cia@cia.navi.cx';
 
 # max number of individual notices before falling back to a single global notice (can be set with -n option)
-my $max_individual_notices = 100;
+my $max_individual_notices = `git config notify.email.max` || 100;
 
 # debug mode
-my $debug = 0;
+my $debug = `git config notify.debug` || 0;
 
 # branches to exclude
-my @exclude_list = ();
+my @exclude_list = split(':', `git config notify.branchExclude` || '');
 
 sub usage()
 {
     print "Usage: $0 [options] [--] refname old-sha1 new-sha1\n";
-    print "   -c name   Send CIA notifications under specified project name\n";
-    print "   -m addr   Send mail notifications to specified address\n";
-    print "   -n max    Set max number of individual mails to send\n";
-    print "   -r name   Set the git repository name\n";
-    print "   -s bytes  Set the maximum diff size in bytes (-1 for no limit)\n";
-    print "   -u url    Set the URL to the gitweb browser\n";
-    print "   -x branch Exclude changes to the specified branch from reports\n";
+    print "   git config notify.cia.name name                     Send CIA notifications under specified project name\n";
+    print "   git config notify.cia.address cia\@cia.navi.cx       Send CIA notifications to the specified email address\n";
+    print "   git config notify.email.address addr\@example.com    Send mail notifications to specified address\n";
+    print "   git config notify.email.sender addr\@example.com     Send mail notifications from specified address\n";
+    print "   git config notify.email.max 100                     Set max number of individual mails to send\n";
+    print "   git config notify.name name                         Set the git repository name\n";
+    print "   git config notify.diffBytes 10000                   Set the maximum diff size in bytes (-1 for no limit)\n";
+    print "   git config notify.gitwebUrl http://url/gitweb.cgi   Set the URL to the gitweb browser\n";
+    print "   git config notify.branchExclude pu:next:foo:bar:baz Exclude changes to the specified branches from reports. Colon separated list.\n";
+    print "   git config notify.debug 1                           Turn on debugging.\n";
     exit 1;
 }
 
@@ -111,22 +114,7 @@ sub format_date($$)
 # parse command line options
 sub parse_options()
 {
-    while (@ARGV && $ARGV[0] =~ /^-/)
-    {
-        my $arg = shift @ARGV;
-
-        if ($arg eq '--') { last; }
-        elsif ($arg eq '-c') { $cia_project_name = shift @ARGV; }
-        elsif ($arg eq '-m') { $commitlist_address = shift @ARGV; }
-        elsif ($arg eq '-n') { $max_individual_notices = shift @ARGV; }
-        elsif ($arg eq '-r') { $repos_name = shift @ARGV; }
-        elsif ($arg eq '-s') { $max_diff_size = shift @ARGV; }
-        elsif ($arg eq '-u') { $gitweb_url = shift @ARGV; }
-        elsif ($arg eq '-x') { push @exclude_list, "^" . shift @ARGV; }
-        elsif ($arg eq '-d') { $debug++; }
-        else { usage(); }
-    }
-    if (@ARGV && $#ARGV != 2) { usage(); }
+    if (!@ARGV || $#ARGV != 2) { usage(); }
 }
 
 # send an email notification
@@ -333,7 +321,7 @@ sub send_global_notice($$$)
     my ($ref, $old_sha1, $new_sha1) = @_;
     my @notice = ();
 
-    open LIST, "-|" or exec "git", "rev-list", "--pretty", "^$old_sha1", "$new_sha1", @exclude_list or die "cannot exec git-rev-list";
+    open LIST, "-|" or exec "git", "rev-list", "--pretty", "^$old_sha1", "$new_sha1", (map { "^$_" } @exclude_list) or die "cannot exec git-rev-list";
     while (<LIST>)
     {
         chomp;
@@ -362,7 +350,7 @@ sub send_all_notices($$$)
 
     my @commits = ();
 
-    open LIST, "-|" or exec "git", "rev-list", "^$old_sha1", "$new_sha1", @exclude_list or die "cannot exec git-rev-list";
+    open LIST, "-|" or exec "git", "rev-list", "^$old_sha1", "$new_sha1", (map { "^$_" } @exclude_list) or die "cannot exec git-rev-list";
     while (<LIST>)
     {
         chomp;
@@ -384,7 +372,6 @@ sub send_all_notices($$$)
     }
 }
 
-$repos_name = get_repos_name();
 parse_options();
 
 # append repository path to URL
