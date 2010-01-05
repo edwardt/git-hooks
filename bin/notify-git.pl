@@ -31,7 +31,10 @@ use Cwd 'realpath';
 binmode STDIN, ':utf8';
 binmode STDOUT, ':utf8';
 
-# some parameters you may want to change
+# See if we need to run at all.
+my $cia_enabled   = `git config notify.cia.enabled` || 0;
+my $email_enabled = `git config notify.email.enabled` || 0;
+return unless $cia_enabled || $email_enabled;
 
 # base URL of the gitweb repository browser (can be set with the -u option)
 my $gitweb_url = `git config notify.gitwebUrl` || 'http://rtkgit.rtkinternal/';
@@ -68,6 +71,8 @@ my @exclude_list = split(':', `git config notify.branchExclude` || '');
 sub usage()
 {
     print "Usage: $0 [options] [--] refname old-sha1 new-sha1\n";
+    print "   git config notify.cia.enabled                       Enable sending CIA notifications\n";
+    print "   git config notify.email.enabled                     Enable sending email notifications\n";
     print "   git config notify.cia.name name                     Send CIA notifications under specified project name\n";
     print "   git config notify.cia.address cia\@cia.navi.cx       Send CIA notifications to the specified email address\n";
     print "   git config notify.email.address addr\@example.com    Send mail notifications to specified address\n";
@@ -367,8 +372,8 @@ sub send_all_notices($$$)
 
     foreach my $commit (@commits)
     {
-        send_commit_notice( $ref, $commit ) if $commitlist_address;
-        send_cia_notice( $ref, $commit ) if $cia_project_name;
+        send_commit_notice( $ref, $commit ) if $email_enabled && $commitlist_address;
+        send_cia_notice( $ref, $commit ) if $cia_enabled && $cia_project_name;
     }
 }
 

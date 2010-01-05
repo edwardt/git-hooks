@@ -3,6 +3,9 @@
 use strict;
 use warnings;
 
+my $should_notify = `git config irccat.enabled`;
+return unless $should_notify;
+
 use Getopt::Long;
 
 my $result = GetOptions(
