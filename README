@@ -1,0 +1,5 @@
+Really should write something up here.
+
+Layout:
+    bin/    - Supporting scripts.
+    hooks/  - The actual git hooks.
