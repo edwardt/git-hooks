@@ -5,23 +5,17 @@ use warnings;
 
 use Getopt::Long;
 
-my $refname;
-my $oldrev;
-my $newrev;
-my @branches;
-my $recipients = "#*";
-my $repo;
-my $graph_lines = 13;
-my $default_format = 'format:"%h %s"';
 my $result = GetOptions(
-    "refname=s"     => \$refname,
-    "oldrev=s"      => \$oldrev,
-    "newrev=s"      => \$newrev,
-    "branch|b=s@"   => \@branches,
-    "recipients=s"  => \$recipients,
-    "repo=s"        => \$repo,
-    "graph-lines=s" => \$graph_lines,
+    "refname=s"     => \(my $refname),
+    "oldrev=s"      => \(my $oldrev),
+    "newrev=s"      => \(my $newrev),
 );
+
+my @branches    = split(':', `git config irccat.branches` || '');
+my $recipients  = `git config irccat.recipients` || '#*';
+my $repo        = `git config notify.name`;
+my $graph_lines = `git config irccat.graphLines` || 13;
+my $format      = `git config irccat.commitFormat` || 'format:"%h %s"';
 
 return unless $result;
 
@@ -29,31 +23,29 @@ if (_should_show_ref($refname)) {
     my $new_nodes = `git rev-list ^$oldrev $newrev | wc -l`;
     chomp $new_nodes;
 
-    my $format = `git config irccat.commitFormat`;
-    $format = $default_format if ($?);
     chomp $format;
 
-    my $log_graph = `git log --pretty=$format --graph ^$oldrev $newrev | head -n$graph_lines`;
+    my $log_graph = `git log --pretty=$format --graph ^$oldrev $newrev`;
 
     my ($name) = $refname =~ m{^refs/.*?/(.*)$};
     $oldrev =~ s/^(.{8}).*/$1/;
     $newrev =~ s/^(.{8}).*/$1/;
 
-    my $message = "$recipients $repo ($name): Updated $oldrev => $newrev ($new_nodes commits)\n"
-        . $log_graph;
-    my @output_lines = split("\n", $log_graph);
-    $message .= "...\n" if scalar @output_lines > $graph_lines;
+    my @output_lines = split("\n",
+        "$recipients $repo ($name): Updated $oldrev => $newrev ($new_nodes commits)\n"
+        . ($graph_lines > 0 ? $log_graph : '')
+    );
+    @output_lines = (@output_lines[0..($graph_lines - 1)], "...")
+            if $graph_lines > 0 && @output_lines > $graph_lines;
 
-    print $message;
+    print join("\n", @output_lines) . "\n";
 }
 
 sub _should_show_ref
 {
-    my $ref = shift;
+    return 1 if @branches == 0;
 
-    if (@branches == 0) {
-        return 1;
-    }
+    my $ref = shift;
     elsif (scalar grep { $ref =~ qr{^refs/.*/$_$} } @branches) {
         return 1;
     }
