@@ -24,6 +24,10 @@
 #
 
 use strict;
+use warnings;
+
+$|++;
+
 use open ':utf8';
 use Encode 'encode';
 use Cwd 'realpath';
@@ -206,6 +210,8 @@ sub get_object_info($)
 # send a commit notice to a mailing list
 sub send_commit_notice($$)
 {
+    print "Sending email notifications: ";
+
     my ($ref,$obj) = @_;
     my %info = get_object_info($obj);
     my @notice = ();
@@ -262,11 +268,14 @@ sub send_commit_notice($$)
     }
 
     mail_notification($commitlist_address, $subject, "text/plain; charset=UTF-8", @notice);
+    print "DONE\n";
 }
 
 # send a commit notice to the CIA server
 sub send_cia_notice($$)
 {
+    print "Sending cia notifications: ";
+
     my ($ref,$commit) = @_;
     my %info = get_object_info($commit);
     my @cia_text = ();
@@ -318,6 +327,7 @@ sub send_cia_notice($$)
         "</message>";
 
     mail_notification($cia_address, "DeliverXML", "text/xml", @cia_text);
+    print "DONE\n";
 }
 
 # send a global commit notice when there are too many commits for individual mails

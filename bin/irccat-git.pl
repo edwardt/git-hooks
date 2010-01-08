@@ -5,8 +5,12 @@ use warnings;
 
 use IO::Socket;
 
+$|++;
+
 my $should_notify = `git config irccat.enabled`;
 exit 0 unless $should_notify;
+
+print "Sending irccat notification: ";
 
 my $refname = $ARGV[0];
 my $oldrev  = $ARGV[1];
@@ -48,6 +52,7 @@ if (_should_show_ref($refname)) {
     );
 
     print $sock join("\n", @output_lines) . "\n";
+    print "DONE\n";
 }
 
 sub _should_show_ref
