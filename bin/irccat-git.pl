@@ -49,7 +49,7 @@ sub _should_show_ref
     return 1 if @branches == 0;
 
     my $ref = shift;
-    elsif (scalar grep { $ref =~ qr{^refs/.*/$_$} } @branches) {
+    if (scalar grep { $ref =~ qr{^refs/.*/$_$} } @branches) {
         return 1;
     }
 

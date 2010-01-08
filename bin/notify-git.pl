@@ -34,7 +34,7 @@ binmode STDOUT, ':utf8';
 # See if we need to run at all.
 my $cia_enabled   = `git config notify.cia.enabled` || 0;
 my $email_enabled = `git config notify.email.enabled` || 0;
-return unless $cia_enabled || $email_enabled;
+exit 0 unless $cia_enabled || $email_enabled;
 
 # base URL of the gitweb repository browser (can be set with the -u option)
 my $gitweb_url = `git config notify.gitwebUrl` || 'http://rtkgit.rtkinternal/';
