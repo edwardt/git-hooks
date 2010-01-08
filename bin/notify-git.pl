@@ -81,7 +81,7 @@ sub usage()
     print "   git config notify.name name                         Set the git repository name\n";
     print "   git config notify.diffBytes 10000                   Set the maximum diff size in bytes (-1 for no limit)\n";
     print "   git config notify.gitwebUrl http://url/gitweb.cgi   Set the URL to the gitweb browser\n";
-    print "   git config notify.branchExclude pu:next:foo:bar:baz Exclude changes to the specified branches from reports. Colon separated list.\n";
+    print "   git config notify.branchExclude pu:next:foo:bar:baz Exclude changes to the specified branche prefixes from reports. Colon separated list.\n";
     print "   git config notify.debug 1                           Turn on debugging.\n";
     exit 1;
 }
@@ -345,7 +345,7 @@ sub send_all_notices($$$)
 
     $ref =~ s/^refs\/heads\///;
 
-    return if (grep { $_ eq $ref } @exclude_list);
+    return if (grep { $_ =~ /^$ref/ } @exclude_list);
 
     if ($old_sha1 eq '0' x 40)  # new ref
     {

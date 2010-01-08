@@ -1,0 +1,46 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+# --- Safety check
+unless (defined $ENV{GIT_DIR} && length $ENV{GIT_DIR}) {
+    print STDERR "Don't run this script from the command line.\n";
+    print STDERR " (if you want, you could supply GIT_DIR then run";
+    print STDERR "  echo '<old-rev> <new-rev> <ref-name>' | $0 )";
+    exit 1;
+}
+
+my @refs;
+
+if (!-t STDIN) {
+    while (my $line = <>) {
+        my @components = split(' ', $line);
+        push @refs, {
+            old  => $components[0],
+            new  => $components[1],
+            name => $components[2],
+        };
+    }
+}
+
+unless (@refs) {
+    print STDERR "Usage: echo '<oldrev> <newrev> <ref>' | $0\n";
+    exit 1;
+}
+
+my $bin_dir = '/data_storage/source_repositories/git/bin';
+
+foreach my $ref (@refs) {
+    my $refname = $ref->{name};
+    my $newrev  = $ref->{new};
+    my $oldrev  = $ref->{old};
+
+    system("$bin_dir/notify-git.pl", $refname, $oldrev, $newrev);
+    system("$bin_dir/irccat-git.pl", "--refname=$refname", "--oldrev=$oldrev", "--newrev=$newrev");
+}
+
+# --- Finished
+exit 0
+
+# vim: syn=perl
