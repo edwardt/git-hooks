@@ -6,7 +6,7 @@ use warnings;
 use IO::Socket;
 
 my $should_notify = `git config irccat.enabled`;
-return unless $should_notify;
+exit 0 unless $should_notify;
 
 my $refname = $ARGV[0];
 my $oldrev  = $ARGV[1];
@@ -20,7 +20,7 @@ my $format      = `git config irccat.commitFormat` || 'format:"%h %s"';
 my $irccat_host = `git config irccat.host`;
 my $irccat_port = `git config irccat.port`;
 
-exit 0 unless defined $refname && $irccat_host;
+exit 1 unless defined $refname && $irccat_host;
 
 if (_should_show_ref($refname)) {
     my $new_nodes = `git rev-list ^$oldrev $newrev | wc -l`;
