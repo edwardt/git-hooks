@@ -37,7 +37,7 @@ foreach my $ref (@refs) {
     my $oldrev  = $ref->{old};
 
     system("$bin_dir/notify-git.pl", $refname, $oldrev, $newrev);
-    system("$bin_dir/irccat-git.pl", "--refname=$refname", "--oldrev=$oldrev", "--newrev=$newrev");
+    system("$bin_dir/irccat-git.pl", $refname, $oldrev, $newrev);
 }
 
 # --- Finished

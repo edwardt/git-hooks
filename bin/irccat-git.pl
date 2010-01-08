@@ -3,24 +3,24 @@
 use strict;
 use warnings;
 
+use IO::Socket;
+
 my $should_notify = `git config irccat.enabled`;
 return unless $should_notify;
 
-use Getopt::Long;
-
-my $result = GetOptions(
-    "refname=s"     => \(my $refname),
-    "oldrev=s"      => \(my $oldrev),
-    "newrev=s"      => \(my $newrev),
-);
+my $refname = $ARGV[0];
+my $oldrev  = $ARGV[1];
+my $newrev  = $ARGV[2];
 
 my @branches    = split(':', `git config irccat.branches` || '');
 my $recipients  = `git config irccat.recipients` || '#*';
 my $repo        = `git config notify.name`;
 my $graph_lines = `git config irccat.graphLines` || 13;
 my $format      = `git config irccat.commitFormat` || 'format:"%h %s"';
+my $irccat_host = `git config irccat.host`;
+my $irccat_port = `git config irccat.port`;
 
-return unless $result;
+exit 0 unless defined $refname && $irccat_host;
 
 if (_should_show_ref($refname)) {
     my $new_nodes = `git rev-list ^$oldrev $newrev | wc -l`;
@@ -41,7 +41,13 @@ if (_should_show_ref($refname)) {
     @output_lines = (@output_lines[0..($graph_lines - 1)], "...")
             if $graph_lines > 0 && @output_lines > $graph_lines;
 
-    print join("\n", @output_lines) . "\n";
+    my $sock = IO::Socket::INET->new(
+        PeerAddr => $irccat_host,
+        PeerPort => $irccat_port,
+        Proto    => 'tcp',
+    );
+
+    print $sock join("\n", @output_lines) . "\n";
 }
 
 sub _should_show_ref
