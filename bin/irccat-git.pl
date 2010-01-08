@@ -7,22 +7,30 @@ use IO::Socket;
 
 $|++;
 
-my $should_notify = `git config irccat.enabled`;
-exit 0 unless $should_notify;
+sub get_config_var($)
+{
+    my $key = shift;
+    my $value = `git config $key`;
+    chomp($value);
 
-print "Sending irccat notification: ";
+    return $value;
+}
+
+my $should_notify = get_config_var('irccat.enabled') || 0;
+
+exit 0 unless $should_notify;
 
 my $refname = $ARGV[0];
 my $oldrev  = $ARGV[1];
 my $newrev  = $ARGV[2];
 
-my @branches    = split(':', `git config irccat.branches` || '');
-my $recipients  = `git config irccat.recipients` || '#*';
-my $repo        = `git config notify.name`;
-my $graph_lines = `git config irccat.graphLines` || 13;
-my $format      = `git config irccat.commitFormat` || 'format:"%h %s"';
-my $irccat_host = `git config irccat.host`;
-my $irccat_port = `git config irccat.port`;
+my @branches    = split(':', get_config_var('irccat.branches') || '');
+my $recipients  = get_config_var('irccat.recipients') || '#*';
+my $repo        = get_config_var('notify.name');
+my $graph_lines = get_config_var('irccat.graphLines') || 13;
+my $format      = get_config_var('irccat.commitFormat') || q|format:'(%h) %cN - %s'|;
+my $irccat_host = get_config_var('irccat.host');
+my $irccat_port = get_config_var('irccat.port');
 
 exit 1 unless defined $refname && $irccat_host;
 
@@ -52,7 +60,6 @@ if (_should_show_ref($refname)) {
     );
 
     print $sock join("\n", @output_lines) . "\n";
-    print "DONE\n";
 }
 
 sub _should_show_ref

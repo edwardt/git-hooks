@@ -28,49 +28,59 @@ use warnings;
 
 $|++;
 
-use open ':utf8';
-use Encode 'encode';
-use Cwd 'realpath';
+use open   qw( :utf8    );
+use Encode qw( encode   );
+use Cwd    qw( realpath );
 
 binmode STDIN, ':utf8';
 binmode STDOUT, ':utf8';
 
+sub get_config_var($)
+{
+    my $key   = shift;
+    my $value = `git config $key`;
+    chomp($value);
+
+    return $value;
+}
+
 # See if we need to run at all.
-my $cia_enabled   = `git config notify.cia.enabled` || 0;
-my $email_enabled = `git config notify.email.enabled` || 0;
+my $cia_enabled   = get_config_var('notify.cia.enabled') || 0;
+my $email_enabled = get_config_var('notify.email.enabled') || 0;
+
 exit 0 unless $cia_enabled || $email_enabled;
 
 # base URL of the gitweb repository browser (can be set with the -u option)
-my $gitweb_url = `git config notify.gitwebUrl` || 'http://rtkgit.rtkinternal/';
+my $gitweb_url = get_config_var('notify.gitwebUrl') || 'http://rtkgit.rtkinternal/';
 
 # set this to something that takes "-s"
 my $mailer = '/bin/mail';
 
-my $sender = `git config notify.email.sender` || 'git@rtkgit.rtkinternal';
+my $sender = get_config_var('notify.email.sender') || 'git@rtkgit.rtkinternal';
 
 # default repository name (can be changed with the -r option)
-my $repos_name = `git config notify.name` || '';
+my $repos_name = get_config_var('notify.name') || '';
 
 # max size of diffs in bytes (can be changed with the -s option)
-my $max_diff_size = `git config notify.diffBytes` || 10000;
+my $max_diff_size = get_config_var('notify.diffBytes') || 10000;
 
 # address for mail notices (can be set with -m option)
-my $commitlist_address = `git config notify.email.address`;
+my $commitlist_address = get_config_var('notify.email.address');
 
 # project name for CIA notices (can be set with -c option)
-my $cia_project_name = `git config notify.cia.name`;
+my $cia_project_name = get_config_var('notify.cia.name');
 
 # CIA notification address
-my $cia_address = `git config notify.cia.address` || 'cia@cia.navi.cx';
+my $cia_address = get_config_var('notify.cia.address') || 'cia@cia.navi.cx';
 
 # max number of individual notices before falling back to a single global notice (can be set with -n option)
-my $max_individual_notices = `git config notify.email.max` || 100;
+my $max_individual_notices = get_config_var('notify.email.max') || 100;
 
 # debug mode
-my $debug = `git config notify.debug` || 0;
+my $debug = get_config_var('notify.debug') || 0;
 
 # branches to exclude
-my @exclude_list = split(':', `git config notify.branchExclude` || '');
+my @exclude_list = split(':', get_config_var('notify.branchExclude') || '');
 
 sub usage()
 {
@@ -153,14 +163,27 @@ sub mail_notification($$$@)
     }
 }
 
+sub excluded_refs()
+{
+    my @all_refs = `git for-each-ref --format='%(refname)'`;
+
+    my @excluded_refs;
+    foreach my $ref (@all_refs) {
+        push @excluded_refs, $ref
+            if grep { $ref =~ /^$_/ } @exclude_list;
+    }
+
+    return @excluded_refs;
+}
+
 # get the default repository name
 sub get_repos_name()
 {
     my $dir = `git rev-parse --git-dir`;
     chomp $dir;
     my $repos = realpath($dir);
-    $repos =~ s/(.*?)((\.git\/)?\.git)$/\1/;
-    $repos =~ s/(.*)\/([^\/]+)\/?$/\2/;
+    $repos =~ s/(.*?)((\.git\/)?\.git)$/$1/;
+    $repos =~ s/(.*)\/([^\/]+)\/?$/$2/;
     return $repos;
 }
 
@@ -210,8 +233,6 @@ sub get_object_info($)
 # send a commit notice to a mailing list
 sub send_commit_notice($$)
 {
-    print "Sending email notifications: ";
-
     my ($ref,$obj) = @_;
     my %info = get_object_info($obj);
     my @notice = ();
@@ -268,14 +289,11 @@ sub send_commit_notice($$)
     }
 
     mail_notification($commitlist_address, $subject, "text/plain; charset=UTF-8", @notice);
-    print "DONE\n";
 }
 
 # send a commit notice to the CIA server
 sub send_cia_notice($$)
 {
-    print "Sending cia notifications: ";
-
     my ($ref,$commit) = @_;
     my %info = get_object_info($commit);
     my @cia_text = ();
@@ -327,7 +345,6 @@ sub send_cia_notice($$)
         "</message>";
 
     mail_notification($cia_address, "DeliverXML", "text/xml", @cia_text);
-    print "DONE\n";
 }
 
 # send a global commit notice when there are too many commits for individual mails
@@ -336,7 +353,7 @@ sub send_global_notice($$$)
     my ($ref, $old_sha1, $new_sha1) = @_;
     my @notice = ();
 
-    open LIST, "-|" or exec "git", "rev-list", "--pretty", "^$old_sha1", "$new_sha1", (map { "^$_" } @exclude_list) or die "cannot exec git-rev-list";
+    open LIST, "-|" or exec "git", "rev-list", "--pretty", "^$old_sha1", "$new_sha1", (map { "^$_" } excluded_refs()) or die "cannot exec git-rev-list";
     while (<LIST>)
     {
         chomp;
@@ -355,7 +372,7 @@ sub send_all_notices($$$)
 
     $ref =~ s/^refs\/heads\///;
 
-    return if (grep { $_ =~ /^$ref/ } @exclude_list);
+    return if (grep { $_ =~ /^$ref/ } excluded_refs());
 
     if ($old_sha1 eq '0' x 40)  # new ref
     {
@@ -365,7 +382,7 @@ sub send_all_notices($$$)
 
     my @commits = ();
 
-    open LIST, "-|" or exec "git", "rev-list", "^$old_sha1", "$new_sha1", (map { "^$_" } @exclude_list) or die "cannot exec git-rev-list";
+    open LIST, "-|" or exec "git", "rev-list", "^$old_sha1", "$new_sha1", (map { "^$_" } excluded_refs()) or die "cannot exec git-rev-list";
     while (<LIST>)
     {
         chomp;
