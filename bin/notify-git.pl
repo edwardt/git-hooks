@@ -95,7 +95,7 @@ sub usage()
     print "   git config notify.name name                         Set the git repository name\n";
     print "   git config notify.diffBytes 10000                   Set the maximum diff size in bytes (-1 for no limit)\n";
     print "   git config notify.gitwebUrl http://url/gitweb.cgi   Set the URL to the gitweb browser\n";
-    print "   git config notify.branchExclude pu:next:foo:bar:baz Exclude changes to the specified branche prefixes from reports. Colon separated list.\n";
+    print "   git config notify.branchExclude refs/heads/pu:refs/heads/next:refs/tags Exclude changes to the specified branche prefixes from reports. Colon separated list.\n";
     print "   git config notify.debug 1                           Turn on debugging.\n";
     exit 1;
 }
