@@ -408,6 +408,7 @@ parse_options();
 
 # append repository path to URL
 $gitweb_url .= "?p=$repos_name";
+$gitweb_url .= '.git' unless $gitweb_url =~ /\.git$/;
 
 if (@ARGV)
 {
