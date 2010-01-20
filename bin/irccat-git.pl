@@ -35,23 +35,20 @@ my $irccat_port = get_config_var('irccat.port');
 exit 1 unless defined $refname && $irccat_host;
 
 if (_should_show_ref($refname)) {
-    my $new_nodes = `git rev-list ^$oldrev $newrev | wc -l`;
-    chomp $new_nodes;
-
-    chomp $format;
-
-    my $log_graph = `git log --pretty=$format --graph ^$oldrev $newrev`;
-
     my ($name) = $refname =~ m{^refs/.*?/(.*)$};
-    $oldrev =~ s/^(.{8}).*/$1/;
-    $newrev =~ s/^(.{8}).*/$1/;
 
-    my @output_lines = split("\n",
-        "$recipients $repo ($name): Updated $oldrev => $newrev ($new_nodes commits)\n"
-        . ($graph_lines > 0 ? $log_graph : '')
-    );
-    @output_lines = (@output_lines[0..($graph_lines - 1)], "...")
-            if $graph_lines > 0 && @output_lines > $graph_lines;
+    my $message = "$recipients $repo ($name): ";
+
+    if ($newrev eq '0' x 40) {
+        print "irccat: Deleted a branch.\n";
+        $message .= _deleted_ref_content();
+    } elsif ($oldrev eq '0' x 40) {
+        print "irccat: Created a branch.\n";
+        $message .= _created_ref_content();
+    } else {
+        print "irccat: Updated a branch.\n";
+        $message .= _updated_ref_content();
+    }
 
     my $sock = IO::Socket::INET->new(
         PeerAddr => $irccat_host,
@@ -59,7 +56,7 @@ if (_should_show_ref($refname)) {
         Proto    => 'tcp',
     );
 
-    print $sock join("\n", @output_lines) . "\n";
+    print $sock $message;
 }
 
 sub _should_show_ref
@@ -67,9 +64,56 @@ sub _should_show_ref
     return 1 if @branches == 0;
 
     my $ref = shift;
-    if (scalar grep { $ref =~ qr{^refs/.*/$_$} } @branches) {
+    if (scalar grep { $ref =~ qr{^$_$} } @branches) {
         return 1;
     }
 
     return 0
 }
+
+sub _updated_ref_content
+{
+    my $new_nodes = `git rev-list ^$oldrev $newrev | wc -l`;
+    chomp $new_nodes;
+
+    chomp $format;
+
+    my $log_graph = `git log --pretty=$format --graph ^$oldrev $newrev`;
+
+    $oldrev = _short_rev($oldrev);
+    $newrev = _short_rev($newrev);
+
+    my @output_lines = (
+        "Updated $oldrev => $newrev ($new_nodes commits)",
+        split("\n", ($graph_lines > 0 ? $log_graph : '')),
+    );
+
+    @output_lines = (@output_lines[0..($graph_lines - 1)], "...")
+            if $graph_lines > 0 && @output_lines > $graph_lines;
+
+    return join("\n", @output_lines) . "\n"
+}
+
+sub _deleted_ref_content
+{
+    my $old_commit = `git show --pretty=$format $oldrev`;
+    chomp $old_commit;
+
+    return "Deleted branch. Was: $old_commit\n";
+}
+
+sub _created_ref_content
+{
+    my $new_commit = `git show --pretty=$format $newrev`;
+    chomp $new_commit;
+
+    return "Created. $new_commit\n";
+}
+
+sub _short_rev
+{
+    my $short = shift;
+    $short =~ s/^(.{8}).*/$1/;
+    return $short;
+}
+
