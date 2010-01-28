@@ -104,7 +104,7 @@ sub _deleted_ref_content
 
 sub _created_ref_content
 {
-    my $new_commit = `git show --pretty=$format $newrev`;
+    my $new_commit = `git log --pretty=$format -1 $newrev`;
     chomp $new_commit;
 
     return "Created. $new_commit\n";
