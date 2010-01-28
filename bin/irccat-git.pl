@@ -96,7 +96,7 @@ sub _updated_ref_content
 
 sub _deleted_ref_content
 {
-    my $old_commit = `git show --pretty=$format $oldrev`;
+    my $old_commit = `git log -1 --pretty=$format $oldrev`;
     chomp $old_commit;
 
     return "Deleted branch. Was: $old_commit\n";
@@ -104,7 +104,7 @@ sub _deleted_ref_content
 
 sub _created_ref_content
 {
-    my $new_commit = `git log --pretty=$format -1 $newrev`;
+    my $new_commit = `git log -1 --pretty=$format $newrev`;
     chomp $new_commit;
 
     return "Created. $new_commit\n";
