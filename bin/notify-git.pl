@@ -163,17 +163,19 @@ sub mail_notification($$$@)
     }
 }
 
+my @_excluded_refs = ();
 sub excluded_refs()
 {
+    return @_excluded_refs if @_excluded_refs;
+
     my @all_refs = `git for-each-ref --format='%(refname)'`;
 
-    my @excluded_refs;
     foreach my $ref (@all_refs) {
-        push @excluded_refs, $ref
+        push @_excluded_refs, $ref
             if grep { $ref =~ /^$_/ } @exclude_list;
     }
 
-    return @excluded_refs;
+    return @_excluded_refs;
 }
 
 # get the default repository name
