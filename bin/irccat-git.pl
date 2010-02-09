@@ -40,13 +40,10 @@ if (_should_show_ref($refname)) {
     my $message = "$recipients $repo ($name): ";
 
     if ($newrev eq '0' x 40) {
-        print "irccat: Deleted a branch.\n";
         $message .= _deleted_ref_content();
     } elsif ($oldrev eq '0' x 40) {
-        print "irccat: Created a branch.\n";
         $message .= _created_ref_content();
     } else {
-        print "irccat: Updated a branch.\n";
         $message .= _updated_ref_content();
     }
 
