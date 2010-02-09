@@ -416,10 +416,12 @@ if (@ARGV)
 }
 else  # read them from stdin
 {
-    while (<>)
+    while (my $line = <>)
     {
-        chomp;
-        if (/^([0-9a-f]{40}) ([0-9a-f]{40}) (.*)$/) { send_all_notices( $3, $1, $2 ); }
+        chomp($line);
+        if ($line =~ /^([0-9a-f]{40}) ([0-9a-f]{40}) (.*)$/) {
+            send_all_notices( $3, $1, $2 );
+        }
     }
 }
 
