@@ -353,7 +353,7 @@ sub send_global_notice($$$)
     my ($ref, $old_sha1, $new_sha1) = @_;
     my @notice = ();
 
-    open LIST, "-|" or exec "git", "rev-list", "--pretty", "^$old_sha1", "$new_sha1", (map { "^$_" } excluded_refs()) or die "cannot exec git-rev-list";
+    open LIST, "-|" or exec "git", "rev-list", "--pretty", "^$old_sha1", "$new_sha1" or die "cannot exec git-rev-list";
     while (<LIST>)
     {
         chomp;
@@ -382,7 +382,7 @@ sub send_all_notices($$$)
 
     my @commits = ();
 
-    open LIST, "-|" or exec "git", "rev-list", "^$old_sha1", "$new_sha1", (map { "^$_" } excluded_refs()) or die "cannot exec git-rev-list";
+    open LIST, "-|" or exec "git", "rev-list", "^$old_sha1", "$new_sha1" or die "cannot exec git-rev-list";
     while (<LIST>)
     {
         chomp;
